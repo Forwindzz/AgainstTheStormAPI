@@ -4,9 +4,12 @@ using ATS_API.Localization;
 using ATS_API.SaveLoading;
 using BepInEx;
 using BepInEx.Logging;
+using Eremite;
 using Eremite.Model;
 using HarmonyLib;
+using System;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace ExampleMod;
 
@@ -33,6 +36,8 @@ public partial class Plugin : BaseUnityPlugin
         PluginDirectory = System.IO.Path.GetDirectoryName(Info.Location);
         
         ModdedSaveManager.ListenForLoadedSaveData(PluginInfo.PLUGIN_GUID, PostLoadedSaveData);
+        ModdedSaveManager.ListenForLoadedSpecificData(PluginInfo.PLUGIN_GUID, SaveDataType.CurrentCycle, PostLoadedCycleSaveData);
+        ModdedSaveManager.ListenForPreSaveSpecificData(PluginInfo.PLUGIN_GUID, SaveDataType.CurrentSettlement, PreSaveSettlementSaveData);
         
         CreateGoods();
         CreateCornerstones();
@@ -90,6 +95,7 @@ public partial class Plugin : BaseUnityPlugin
         });
     }
 
+    // The callback will be invoked everytime the game try to save any file
     private void PostLoadedSaveData(ModSaveData saveData, SaveFileState saveState)
     {
         if (saveState == SaveFileState.NewFile)
@@ -102,6 +108,38 @@ public partial class Plugin : BaseUnityPlugin
             int value = saveData.General.GetValueAsObject<int>("TotalLoads") + 1;
             saveData.General.SetValue("TotalLoads", value);
             Log.LogInfo($"Loaded save file for {PluginInfo.PLUGIN_NAME} {value} times");
+        }
+    }
+
+    // The callback will be invoked only after CurrentCycle data loaded
+    private void PostLoadedCycleSaveData(ModSaveData saveData, SaveFileState saveState)
+    {
+        if (saveState == SaveFileState.NewFile)
+        {
+            Log.LogInfo($"New save file Cycle created for {PluginInfo.PLUGIN_NAME}");
+            saveData.CurrentCycle.SetValue("TotalLoads", 0);
+        }
+        else
+        {
+            int value = saveData.CurrentCycle.GetValueAsObject<int>("TotalLoads") + 1;
+            saveData.CurrentCycle.SetValue("TotalLoads", value);
+            Log.LogInfo($"Loaded Cycle save file for {PluginInfo.PLUGIN_NAME} {value} times");
+        }
+    }
+
+    // The callback will be invoked only before saving CurrentSettlement
+    private void PreSaveSettlementSaveData(ModSaveData saveData, SaveFileState saveState)
+    {
+        if (saveState == SaveFileState.NewFile)
+        {
+            Log.LogInfo($"New save file Settlement for {PluginInfo.PLUGIN_NAME}, first time to save");
+            saveData.CurrentSettlement.SetValue("TotalSaves", 0);
+        }
+        else
+        {
+            int value = saveData.CurrentSettlement.GetValueAsObject<int>("TotalSaves") + 1;
+            saveData.CurrentSettlement.SetValue("TotalSaves", value);
+            Log.LogInfo($"Save Settlement save file for {PluginInfo.PLUGIN_NAME} {value} times");
         }
     }
 }
